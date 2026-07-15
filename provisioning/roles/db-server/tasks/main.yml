@@ -38,8 +38,8 @@
 - name: Create taskmgr application user with remote access from webserver
   shell: |
     mysql <<'SQL'
-    CREATE USER IF NOT EXISTS 'taskmgr'@'172.16.0.10' IDENTIFIED BY 'Db_S3cr3t_2024_wr4pp3r';
-    GRANT ALL PRIVILEGES ON taskmanager.* TO 'taskmgr'@'172.16.0.10';
+    CREATE USER IF NOT EXISTS 'taskmgr'@'172.16.1.10' IDENTIFIED BY 'Db_S3cr3t_2024_wr4pp3r';
+    GRANT ALL PRIVILEGES ON taskmanager.* TO 'taskmgr'@'172.16.1.10';
     FLUSH PRIVILEGES;
     SQL
   args:
