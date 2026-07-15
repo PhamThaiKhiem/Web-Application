@@ -27,11 +27,11 @@ roles during provisioning.
 
 | Host | Image | IP | Flavor |
 | --- | --- | --- | --- |
-| attacker | kali-2020.4 | 172.16.0.100 | standard.small |
-| webserver | debian-12-x86_64 (LAMP) | 172.16.0.10 | standard.small |
-| db-server | debian-12-x86_64 (MariaDB) | 172.16.0.20 | standard.small |
+| attacker | kali-2020.4 | 172.16.1.100 | standard.small |
+| webserver | debian-12-x86_64 (LAMP) | 172.16.1.10 | standard.small |
+| db-server | debian-12-x86_64 (MariaDB) | 172.16.1.20 | standard.small |
 
-`db-server` only accepts connections from `webserver` (172.16.0.10); it is
+`db-server` only accepts connections from `webserver` (172.16.1.10); it is
 not directly reachable from `attacker`, matching the scenario's design.
 
 
