@@ -50,9 +50,4 @@ router_mappings:
   network: switch
   ip: 172.16.1.1
 
-groups:
-- name: hosts
-  nodes:
-  - attacker
-  - webserver
-  - db-server
+groups: []
