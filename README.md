@@ -34,29 +34,7 @@ roles during provisioning.
 `db-server` only accepts connections from `webserver` (172.16.0.10); it is
 not directly reachable from `attacker`, matching the scenario's design.
 
-## Provisioning structure
 
-```
-provisioning/
-├── playbook.yml                    # entry point: hosts -> attacker/webserver/db-server -> sandbox-logging
-├── requirements.yml                 # shared roles: sandbox-logging, chrony, hosts-aliases, user-access
-├── host_vars/                       # ansible_python_interpreter: python3 for each host
-└── roles/
-    ├── hosts/tasks/main.yml         # common baseline (net-tools, unzip)
-    ├── attacker/tasks/main.yml      # ensures gobuster/sqlmap/netcat/wordlists are present
-    ├── webserver/
-    │   ├── tasks/main.yml           # installs LAMP, deploys the app, sets hostname, enables system()
-    │   └── files/app/               # the actual vulnerable PHP application source
-    │       ├── index.php
-    │       └── admin_portal_v2/
-    │           ├── login.php        # SQLi-vulnerable auth (Level 2)
-    │           ├── dashboard.php    # LFI via ?page= (Levels 4 & 5)
-    │           ├── config.php       # contains DB_PASS (Level 4 target)
-    │           ├── home.php / tasks.php / profile.php / logout.php
-    │           └── .secret_vault/crown.txt   # final flag (Level 6)
-    └── db-server/
-        ├── tasks/main.yml           # installs MariaDB, opens remote access, loads schema
-        └── templates/schema.sql.j2  # users + secrets tables (Levels 2 & 3)
 ```
 
 ## Design notes / intentional adjustments from the original scenario draft
