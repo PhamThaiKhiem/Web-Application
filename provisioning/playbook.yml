@@ -24,14 +24,12 @@
   become: true
   roles:
     - role: webserver
-    - role: chrony
 
 - name: Configure db-server
   hosts: db-server
   become: true
   roles:
     - role: db-server
-    - role: chrony
 
 - name: setup hosts logging roles
   hosts:
