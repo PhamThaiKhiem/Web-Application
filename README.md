@@ -35,7 +35,7 @@ roles during provisioning.
 not directly reachable from `attacker`, matching the scenario's design.
 
 
-```
+
 
 ## Design notes / intentional adjustments from the original scenario draft
 
