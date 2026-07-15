@@ -3,14 +3,16 @@ name: library-taskmanager-webapp
 hosts:
 - name: attacker
   base_box:
-    image: kali-2020.4
+    image: kali
     mgmt_user: debian
-  flavor: standard.small
+  flavor: standard.kali
+  
 - name: webserver
   base_box:
     image: debian-12-x86_64
     mgmt_user: debian
   flavor: standard.small
+  
 - name: db-server
   base_box:
     image: debian-12-x86_64
@@ -30,23 +32,23 @@ wan:
 
 networks:
 - name: switch
-  cidr: 172.16.0.0/24
+  cidr: 172.16.1.0/24
 
 net_mappings:
 - host: attacker
   network: switch
-  ip: 172.16.0.100
+  ip: 172.16.1.100
 - host: webserver
   network: switch
-  ip: 172.16.0.10
+  ip: 172.16.1.10
 - host: db-server
   network: switch
-  ip: 172.16.0.20
+  ip: 172.16.1.20
 
 router_mappings:
 - router: router
   network: switch
-  ip: 172.16.0.1
+  ip: 172.16.1.1
 
 groups:
 - name: hosts
