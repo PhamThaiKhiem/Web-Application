@@ -1,0 +1,73 @@
+- name: Install Apache, PHP and MySQL client libraries
+  apt:
+    name:
+      - apache2
+      - php
+      - libapache2-mod-php
+      - php-mysql
+    state: present
+    update_cache: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Set hostname (used as a flag value in Level 5)
+  hostname:
+    name: taskmgr-prod-01
+
+- name: Ensure hostname is reflected in /etc/hostname
+  copy:
+    content: "taskmgr-prod-01\n"
+    dest: /etc/hostname
+
+- name: Ensure disable_functions does not block system()/exec() (intentionally vulnerable target)
+  lineinfile:
+    path: "{{ item }}"
+    regexp: '^disable_functions'
+    line: 'disable_functions ='
+  loop:
+    - /etc/php/8.2/apache2/php.ini
+  ignore_errors: true
+  notify: restart apache2
+
+- name: Remove default Apache landing page
+  file:
+    path: /var/www/html/index.html
+    state: absent
+
+- name: Deploy TaskManager application files
+  copy:
+    src: app/
+    dest: /var/www/html/
+    owner: www-data
+    group: www-data
+    mode: preserve
+
+- name: Ensure hidden secret vault directory keeps restrictive-looking but readable permissions (training target)
+  file:
+    path: /var/www/html/admin_portal_v2/.secret_vault
+    state: directory
+    owner: www-data
+    group: www-data
+    mode: '0750'
+
+- name: Create final crown flag
+  copy:
+    dest: /var/www/html/admin_portal_v2/.secret_vault/crown.txt
+    content: "FLAG{full_ch41n_SQL1_LFI_l0g_RCE}\n"
+    owner: www-data
+    group: www-data
+    mode: '0640'
+
+- name: Ensure Apache access log is world-unreadable-but-www-data-readable (needed for log poisoning exercise)
+  file:
+    path: /var/log/apache2/access.log
+    state: touch
+    owner: root
+    group: adm
+    mode: '0644'
+
+- name: Restart Apache to apply all changes
+  systemd:
+    name: apache2
+    state: restarted
+    enabled: true

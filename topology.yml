@@ -1,0 +1,56 @@
+name: library-taskmanager-webapp
+
+hosts:
+- name: attacker
+  base_box:
+    image: kali-2020.4
+    mgmt_user: debian
+  flavor: standard.small
+- name: webserver
+  base_box:
+    image: debian-12-x86_64
+    mgmt_user: debian
+  flavor: standard.small
+- name: db-server
+  base_box:
+    image: debian-12-x86_64
+    mgmt_user: debian
+  flavor: standard.small
+
+routers:
+- name: router
+  base_box:
+    image: debian-12-x86_64
+    mgmt_user: debian
+  flavor: standard.small
+
+wan:
+  name: internet-connection
+  cidr: 100.100.100.0/24
+
+networks:
+- name: switch
+  cidr: 172.16.0.0/24
+
+net_mappings:
+- host: attacker
+  network: switch
+  ip: 172.16.0.100
+- host: webserver
+  network: switch
+  ip: 172.16.0.10
+- host: db-server
+  network: switch
+  ip: 172.16.0.20
+
+router_mappings:
+- router: router
+  network: switch
+  ip: 172.16.0.1
+
+groups:
+- name: hosts
+  nodes:
+  - attacker
+  - webserver
+  - db-server

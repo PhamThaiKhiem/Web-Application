@@ -1,0 +1,15 @@
+This repository uses a dual licensing approach:
+
+- The code (Ansible provisioning, topology, and the vulnerable "TaskManager"
+  application source) is licensed under the terms of the MIT License
+  (https://opensource.org/license/mit).
+- The game design and training content are licensed under a Creative
+  Commons Attribution 4.0 International License (CC BY 4.0).
+
+Attribution:
+
+The "TaskManager" application (PHP source, database schema, all flags and
+scenario text) is original content created for this training lab. It is
+not based on any real-world application, breach, or third-party dataset.
+
+Scenario design and CyberRangeCZ Platform adaptation by: [your name / team]

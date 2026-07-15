@@ -1,0 +1,22 @@
+- name: Ensure pentest tools are present (usually preinstalled on Kali)
+  apt:
+    name:
+      - gobuster
+      - sqlmap
+      - netcat-traditional
+      - curl
+      - dirb
+    state: present
+    update_cache: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Verify dirb wordlist is present
+  stat:
+    path: /usr/share/dirb/wordlists/common.txt
+  register: dirb_wordlist
+
+- name: Warn if dirb wordlist is missing
+  debug:
+    msg: "WARNING: /usr/share/dirb/wordlists/common.txt not found on this image. Level 1 (gobuster) will not work without it."
+  when: not dirb_wordlist.stat.exists

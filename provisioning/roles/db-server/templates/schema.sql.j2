@@ -1,0 +1,27 @@
+-- TaskManager database schema
+CREATE DATABASE IF NOT EXISTS taskmanager;
+USE taskmanager;
+
+DROP TABLE IF EXISTS users;
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user VARCHAR(64) NOT NULL,
+    pass VARCHAR(64) NOT NULL
+);
+
+-- superadmin_2077 is inserted FIRST (lowest id), so a classic
+-- ' OR 1=1-- - injection returns this row first via fetch_assoc().
+INSERT INTO users (user, pass) VALUES
+    ('superadmin_2077', 'R3al_P4ssw0rd_Not_Guessable!'),
+    ('jdoe', 'password123'),
+    ('msmith', 'letmein2024');
+
+DROP TABLE IF EXISTS secrets;
+CREATE TABLE secrets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    api_key VARCHAR(128) NOT NULL,
+    note VARCHAR(255)
+);
+
+INSERT INTO secrets (api_key, note) VALUES
+    ('sk_live_51gHTofJustice', 'Payment gateway production key - DO NOT COMMIT');
