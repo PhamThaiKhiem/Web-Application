@@ -71,3 +71,28 @@
     name: apache2
     state: restarted
     enabled: true
+
+- name: Start Apache once to ensure the log files exist
+  systemd:
+    name: apache2
+    state: started
+    enabled: true
+ 
+- name: Add www-data to the adm group (Debian's default log-reading group)
+  user:
+    name: www-data
+    groups: adm
+    append: true
+ 
+- name: Ensure Apache access log is readable by www-data (belt-and-braces alongside the adm group membership above)
+  file:
+    path: /var/log/apache2/access.log
+    owner: root
+    group: adm
+    mode: '0644'
+ 
+- name: Restart Apache so the worker processes pick up www-data's new group membership
+  systemd:
+    name: apache2
+    state: restarted
+    enabled: true
